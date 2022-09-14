@@ -16,14 +16,14 @@ class OfferRequest extends FormRequest
     {
         return [
             'search' => 'string',
-            'max_price' => 'float',
-            'sortBy' => [
+            'max_price' => 'numeric',
+            'sort_by' => [
                 Rule::in([
                     'amount',
                     'products.created_at'
                 ])
             ],
-            'sortType' => [
+            'sort_type' => [
                 Rule::in([
                     'desc',
                     'DESC',

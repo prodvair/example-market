@@ -19,7 +19,7 @@ class Seller extends Model
         'token',
     ];
 
-    public function offers(): HasMany {
-        return $this->hasMany(Offer::class);
+    public function offers(): BelongsTo {
+        return $this->hasMany(Offer::class, 'seller_id', 'id');
     }
 }

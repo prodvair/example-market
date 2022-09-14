@@ -16,12 +16,12 @@ class Offer extends Model
         'count'
     ];
 
-    public function sellers(): BelongsTo
+    public function seller()
     {
         return $this->belongsTo(Seller::class, 'seller_id');
     }
 
-    public function products(): BelongsTo
+    public function product()
     {
         return $this->belongsTo(Product::class, 'product_id');
     }

@@ -13,44 +13,67 @@ class OfferController extends Controller
 {
     public function index(OfferRequest $request)
     {
-        $productQuery = Product::query()
-            ->select(
-                'products.id as id',
-                'products.name as name',
-                'description',
-                'products.image as image',
-                'article',
-                'amount',
-                'count',
-                'sellers.name as seller_name',
-                'sellers.image as seller_image',
-                'products.created_at as created_at',
-                'products.updated_at as updated_at',
-            )
-            ->leftJoin('offers', 'products.id', '=', 'offers.product_id')
-            ->leftJoin('sellers', 'sellers.id', '=', 'offers.seller_id')
-            ->groupBy('product.id', 'products.name', 'description', 'products.image');
-        $where = [];
-        $orderBy = [];
+        $query = Product::query()
 
-        if ($request->has('search') && $request->search != '') {
-            array_push($where, ['products.name', 'LIKE', "%{$request->search}%"]);
-        }
+            ->when($request->query('view', 'list'), function($query, $view) {
+                if ($view === 'group') {
+                    $query->with(['offers' => function ($query) {
+                        $query->leftJoin('sellers', 'sellers.id', '=', 'offers.seller_id');
+                    }]);
+                } else {
+                    $query->select([
+                        'products.id as id',
+                        'products.name as name',
+                        'description',
+                        'products.image as image',
+                        'article',
+                        'amount',
+                        'count',
+                        'sellers.name as seller_name',
+                        'sellers.image as seller_image',
+                        'products.created_at as created_at',
+                        'products.updated_at as updated_at',
+                    ])
+                    ->leftJoin('offers', 'offers.id', '=', 'products.id')
+                    ->leftJoin('sellers', 'sellers.id', '=', 'offers.seller_id');
+                }
+            })
+            ->when($request->search, function($query, $search) {
+                $query->whereRelation('product', 'name', 'like', "%{$search}%");
+            })
+            ->when($request->max_price, function($query, $max_price) {
+                $query->whereRelation('offers', 'amount', '<=', (float) $max_price);
+            })
+            ->when($request->sort_by, function($query) use ($request) {
+                $query->whereRelation($request->sort_by, $request->query('sort_type', 'asc'));
+            });
+            // ->select(
+            //     'products.id as id',
+            //     'products.name as name',
+            //     'description',
+            //     'products.image as image',
+            //     'article',
+            //     'amount',
+            //     'count',
+            //     'sellers.name as seller_name',
+            //     'sellers.image as seller_image',
+            //     'products.created_at as created_at',
+            //     'products.updated_at as updated_at',
+            // )
+            // with(['offers' => function ($query) {
+            //     $query->leftJoin('sellers', 'sellers.id', '=', 'offers.seller_id')->groupBy('offers.id', 'sellers.id');
+            // }]);
+            // ->leftJoin('sellers', 'sellers.id', '=', 'offers.seller_id');
+        $perPage = $request->query('per_page', config("app.limit"));
+        $maxPerPage = config("app.max_limit");
 
-        if ($request->has('sortBy') && $request->sortBy != '') {
-            if ($request->has('sortType') && $request->sortType != '') {
-                $productQuery->orderBy($request->sortBy, $request->sortType);
-            } else {
-                $productQuery->orderBy($request->sortBy, 'DESC');
-            }
-        }
 
         $limit = config("app.limit");
 
-        if ($request->per_page && (int) $request->per_page <= config("app.max_limit")) {
-            $limit = (int) $request->per_page;
+        if ($perPage > $maxPerPage) {
+            $perPage = $maxPerPage;
         }
 
-        return OfferResources::collection($productQuery->having($where)->paginate($limit));
+        return OfferResources::collection($query->paginate($perPage));
     }
 }
